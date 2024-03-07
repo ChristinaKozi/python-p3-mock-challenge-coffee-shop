@@ -2,6 +2,9 @@ class Coffee:
     def __init__(self, name):
         self.name = name
 
+        self._orders = []
+        self._customers = []
+
     @property
     def name(self):
         return self._name
@@ -12,36 +15,43 @@ class Coffee:
             self._name = name
 
     def orders(self):
-        orders = []
-        for order in Order.all:
-            if order.coffee == self:
-                orders.append(order)
-        return orders
+        return self._orders
     
     def customers(self):
-        customers = []
-        for order in Order.all:
-            if order.coffee == self:
-                customers.append(order.customer)
-        return list(set(customers))
+        return list(set(self._customers))
     
     def num_orders(self):
-        count = 0
-        for order in Order.all:
-            if order.coffee == self:
-                count += 1
-        return count
+        return len(self._orders)
     
-    def average_price(self):
+    def average_price(self): 
+        total = 0
+        for order in self._orders:
+            total += order.price
+        avg = total / len(self._orders)
+        return avg
+    
+        # diff solution
+        #return sum([order.price for order in self._orders]) / len(self._orders)
+        
+        # diff solution
+        '''
         prices = []
         for order in Order.all:
             if order.coffee == self:
                 prices.append(order.price)
-        return sum(prices)/len(prices)
+        return sum(prices)/len(prices)'''
 
 class Customer:
+
+    all = []
+
     def __init__(self, name):
         self.name = name
+
+        self._orders = []
+        self._coffees = []
+
+        Customer.all.append(self)
 
     @property
     def name(self):
@@ -53,18 +63,10 @@ class Customer:
             self._name = name
         
     def orders(self):
-        orders = []
-        for order in Order.all:
-            if order.customer == self:
-                orders.append(order)
-        return orders
+        return self._orders
 
     def coffees(self):
-        coffees = []
-        for order in Order.all:
-            if order.customer == self:
-                coffees.append(order.coffee)
-        return list(set(coffees))
+        return list(set(self._coffees))
     
     def create_order(self, coffee, price):
         if isinstance(coffee, Coffee):
@@ -73,6 +75,21 @@ class Customer:
     
     @classmethod
     def most_aficionado(cls, coffee):
+        customer_amount_spent = {}
+        for customer in cls.all:
+            for order in customer._orders:
+                if order.coffee == coffee:
+                    if customer in customer_amount_spent:
+                        customer_amount_spent[customer] += order.price
+                    else:
+                        customer_amount_spent[customer] = order.price
+        
+        if len(customer_amount_spent) == 0:
+            return None
+        else:
+            return max(customer_amount_spent, key = customer_amount_spent.get)
+
+        '''
         customers = {}
         for order in Order.all:
             if order.coffee == coffee:
@@ -82,7 +99,7 @@ class Customer:
                     customers[order.customer] += order.price
         
         return max(customers, key=customers.get)
-
+        '''
 
     
 class Order:
@@ -93,6 +110,13 @@ class Order:
         self.customer = customer
         self.coffee = coffee
         self._price = price
+
+        self.customer._orders.append(self)
+        self.customer._coffees.append(self.coffee)
+
+        self.coffee._orders.append(self)
+        self.coffee._customers.append(self.customer)
+
         Order.all.append(self)
 
     @property
@@ -101,7 +125,7 @@ class Order:
     
     @price.setter
     def price(self, price):
-        if not hasattr(self,"_price") and isinstance(price,float) and 1.0 < price < 10.0:
+        if not hasattr(self,"price") and isinstance(price,float) and 1.0 < price < 10.0:
             self._price = price
 
     @property
